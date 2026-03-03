@@ -19,6 +19,15 @@ interface FeedbackViewProps {
 export const FeedbackView: React.FC<FeedbackViewProps> = ({ data, onRestart, mode, date, isHistory }) => {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
+      {/* Back Button */}
+      <button 
+        onClick={onRestart}
+        className="flex items-center space-x-2 text-zinc-500 hover:text-zinc-900 transition-colors mb-4"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span className="font-medium">Back</span>
+      </button>
+
       {/* Header & Overall Score */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-8 bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm">
         <div className="space-y-2 text-center md:text-left">

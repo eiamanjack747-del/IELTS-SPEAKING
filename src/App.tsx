@@ -3,19 +3,21 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Mic, Book, MessageCircle, Globe, 
   History as HistoryIcon, Award, Settings,
-  ChevronRight, Play, Star, Clock, User, ArrowLeft, AlertCircle, XCircle
+  ChevronRight, Play, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb
 } from 'lucide-react';
 import { SplashScreen } from './components/SplashScreen';
 import { SettingsModal } from './components/SettingsModal';
+import { BooksView } from './components/BooksView';
 import { TipsView } from './components/TipsView';
 import { IELTSExaminer } from './components/IELTSExaminer';
 import { FeedbackView } from './components/FeedbackView';
+import { LiveUsers } from './components/LiveUsers';
 import { TestMode, TestSession, FeedbackData } from './types';
 import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'books'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [viewingSession, setViewingSession] = useState<TestSession | null>(null);
@@ -66,6 +68,13 @@ export default function App() {
     }
   };
 
+  const stopMicrophone = () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => track.stop());
+      setMediaStream(null);
+    }
+  };
+
   const handleStartTest = async (mode: TestMode) => {
     const hasAccess = await requestMicrophone();
     if (hasAccess) {
@@ -75,6 +84,7 @@ export default function App() {
   };
 
   const handleTestComplete = (data: FeedbackData) => {
+    stopMicrophone();
     setFeedbackData(data);
     setReturnTo('home');
     
@@ -188,6 +198,9 @@ export default function App() {
                   <Star className="w-3 h-3 fill-current" />
                   <span>AI-Powered IELTS Coach</span>
                 </div>
+                <h2 className="text-2xl font-bold text-zinc-400 mt-2">
+                  {new Date().getHours() < 12 ? 'Good Morning' : 'Good Day'}, {userName}
+                </h2>
                 <h1 className="text-5xl font-black tracking-tight leading-tight">
                   Express <span className="text-emerald-600">Yourself</span>
                 </h1>
@@ -196,6 +209,7 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
+                <LiveUsers />
                 {mediaStream && (
                   <div className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-medium animate-pulse border border-red-100">
                     <Mic className="w-3 h-3" />
@@ -203,11 +217,18 @@ export default function App() {
                   </div>
                 )}
                 <button 
+                  onClick={() => setView('books')}
+                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="Cambridge IELTS Books"
+                >
+                  <Book className="w-6 h-6 text-zinc-600" />
+                </button>
+                <button 
                   onClick={() => setView('tips')}
                   className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
                   title="Tips & Resources"
                 >
-                  <Book className="w-6 h-6 text-zinc-600" />
+                  <Lightbulb className="w-6 h-6 text-zinc-600" />
                 </button>
                 <button 
                   onClick={() => setView('history')}
@@ -302,7 +323,10 @@ export default function App() {
               userName={userName}
               mediaStream={mediaStream}
               onComplete={handleTestComplete}
-              onCancel={() => setView('home')}
+              onCancel={() => {
+                stopMicrophone();
+                setView('home');
+              }}
             />
           </motion.div>
         )}
@@ -409,6 +433,10 @@ export default function App() {
 
         {view === 'tips' && (
           <TipsView onBack={() => setView('home')} />
+        )}
+
+        {view === 'books' && (
+          <BooksView onBack={() => setView('home')} />
         )}
       </AnimatePresence>
       </div>
