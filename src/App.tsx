@@ -5,12 +5,14 @@ import {
   History as HistoryIcon, Award, Settings,
   ChevronRight, Play, Star, Clock, User, ArrowLeft, AlertCircle, XCircle
 } from 'lucide-react';
+import { SplashScreen } from './components/SplashScreen';
 import { IELTSExaminer } from './components/IELTSExaminer';
 import { FeedbackView } from './components/FeedbackView';
 import { TestMode, TestSession, FeedbackData } from './types';
 import { cn } from './utils';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
@@ -115,8 +117,13 @@ export default function App() {
     },
   ];
 
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-zinc-900 font-sans">
+    <div className="min-h-screen bg-[#F9FAFB] text-zinc-900 font-sans flex flex-col">
+      <div className="flex-grow">
       <AnimatePresence mode="wait">
         {view === 'home' && (
           <motion.main
@@ -325,6 +332,10 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
+      <footer className="py-6 text-center text-zinc-400 text-sm">
+        <p>Developed by <span className="font-bold text-zinc-600">Eiaman</span></p>
+      </footer>
     </div>
   );
 }
