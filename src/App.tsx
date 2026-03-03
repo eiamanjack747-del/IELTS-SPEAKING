@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Mic, Book, MessageCircle, Globe, 
+  Mic, MessageCircle, Globe, Book,
   History as HistoryIcon, Award, Settings,
-  ChevronRight, Play, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb
+  ChevronRight, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb
 } from 'lucide-react';
 import { SplashScreen } from './components/SplashScreen';
 import { SettingsModal } from './components/SettingsModal';
-import { BooksView } from './components/BooksView';
 import { TipsView } from './components/TipsView';
 import { IELTSExaminer } from './components/IELTSExaminer';
 import { FeedbackView } from './components/FeedbackView';
@@ -17,7 +16,7 @@ import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'books'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [viewingSession, setViewingSession] = useState<TestSession | null>(null);
@@ -216,13 +215,6 @@ export default function App() {
                     <span>Mic Ready</span>
                   </div>
                 )}
-                <button 
-                  onClick={() => setView('books')}
-                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
-                  title="Cambridge IELTS Books"
-                >
-                  <Book className="w-6 h-6 text-zinc-600" />
-                </button>
                 <button 
                   onClick={() => setView('tips')}
                   className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
@@ -433,10 +425,6 @@ export default function App() {
 
         {view === 'tips' && (
           <TipsView onBack={() => setView('home')} />
-        )}
-
-        {view === 'books' && (
-          <BooksView onBack={() => setView('home')} />
         )}
       </AnimatePresence>
       </div>

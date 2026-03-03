@@ -59,6 +59,11 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     - Provide speaking interaction ONLY in English during the test.
     - Provide feedback in Bangla (Bengali) ONLY after the test is finished.
     
+    CRITICAL INSTRUCTION - TIMING & TRANSITIONS:
+    - NO DELAY: Ask the next question IMMEDIATELY after the user finishes their answer.
+    - NO FILLERS: Do NOT use phrases like "That's interesting", "Good answer", "Thank you", or "Okay" unless absolutely necessary. Just ask the next question directly.
+    - AUTO-STOP: When the questions for the selected mode are finished, you MUST IMMEDIATELY call the 'submitFeedback' tool. Do not say "Goodbye" or "That is the end". Just call the tool.
+    
     TEST MODE: ${mode}
     
     ${mode === 'DAILY_CONVO' ? `
@@ -66,17 +71,17 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     - Switch personality to a natural, friendly tone.
     - Scenarios: Airport, Hotel Check-in, Doctor, Bank, University.
     - Randomly pick one scenario and start the conversation.
-    - After conversation ends, provide Bangla correction and feedback.
+    - After conversation ends, call 'submitFeedback'.
     ` : mode === 'VISA_INTERVIEW' ? `
     VISA INTERVIEW MODE:
     - Professional embassy simulation.
     - Types: Student Visa, Work Visa, Tourist Visa.
     - Randomly pick one type and start the interview.
     - Features: Formal tone, unexpected follow-ups, pressure simulation.
-    - After interview, provide Confidence Score, Clarity Score, Risk Level, Embassy Impression, and Bangla Feedback.
+    - After interview ends, call 'submitFeedback'.
     ` : `
     IELTS MODES (FULL_MOCK, PART_1, PART_2, PART_3):
-    - MANDATORY OPENING SCRIPT:
+    - MANDATORY OPENING SCRIPT (Only for FULL_MOCK or PART_1):
       1. Say: "Good morning/afternoon. My name is Md Eiaman. This test is being recorded. Can you tell me your full name, please?"
       2. WAIT for response.
       3. Ask: "What can I call you?"
@@ -91,6 +96,7 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     - PART 1 (4-5 mins):
       - Transition: "Now, in this first part, I'd like to ask you some questions about yourself and some familiar topics."
       - Ask 3-4 questions on 2-3 topics.
+      - IF MODE IS 'PART_1': Call 'submitFeedback' IMMEDIATELY after the last question is answered.
     
     - PART 2 (Cue Card):
       - Instruction: "Now I'm going to give you a topic and I'd like you to talk about it for one to two minutes. Before you talk, you'll have one minute to think about what you are going to say. You can make some notes if you wish. Do you understand?"
@@ -100,14 +106,14 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
       - Say: "Alright. You can start speaking now."
       - WAIT for user to speak (up to 2 mins).
       - Say: "Thank you. I'll stop you there."
+      - Ask 1 short follow-up question.
+      - IF MODE IS 'PART_2': Call 'submitFeedback' IMMEDIATELY after the follow-up answer.
     
     - PART 3 (4-5 mins):
       - Transition: "Now let's discuss some more general questions related to this topic."
       - Ask analytical, opinion-based questions.
+      - IF MODE IS 'PART_3' OR 'FULL_MOCK': Call 'submitFeedback' IMMEDIATELY after the last question is answered.
     `}
-    
-    CLOSING:
-    - Say: "That is the end of the session. Thank you very much."
     
     FEEDBACK (After session ends):
     - Provide a detailed evaluation in JSON format using the 'submitFeedback' tool.
@@ -155,8 +161,13 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
           if (call.functionCalls) {
             for (const fc of call.functionCalls) {
               if (fc.name === 'submitFeedback') {
+                // Stop recording and disconnect immediately
+                setIsRecording(false);
+                processorRef.current?.disconnect();
+                liveServiceRef.current?.disconnect();
+                
+                // Submit data
                 onComplete(fc.args as FeedbackData);
-                endTest();
               }
             }
           }
@@ -455,6 +466,17 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     }
     return () => clearInterval(interval);
   }, [status]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      processorRef.current?.disconnect();
+      liveServiceRef.current?.disconnect();
+      if (audioContextRef.current?.state !== 'closed') {
+        audioContextRef.current?.close();
+      }
+    };
+  }, []);
 
   if (status === 'loading_feedback') {
     return (
