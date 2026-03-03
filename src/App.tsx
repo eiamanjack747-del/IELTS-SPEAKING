@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Mic, MessageCircle, Globe, Book,
+  Mic, MessageCircle, Globe, Book, BookOpen,
   History as HistoryIcon, Award, Settings,
   ChevronRight, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb
 } from 'lucide-react';
@@ -11,14 +11,19 @@ import { TipsView } from './components/TipsView';
 import { IELTSExaminer } from './components/IELTSExaminer';
 import { FeedbackView } from './components/FeedbackView';
 import { LiveUsers } from './components/LiveUsers';
-import { TestMode, TestSession, FeedbackData } from './types';
+import { ReadingDashboard } from './components/reading/ReadingDashboard';
+import { ReadingTestRunner } from './components/reading/ReadingTestRunner';
+import { ReadingResultView } from './components/reading/ReadingResultView';
+import { TestMode, TestSession, FeedbackData, ReadingMode, ReadingTestResult } from './types';
 import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'reading' | 'reading_test' | 'reading_result'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
+  const [selectedReadingMode, setSelectedReadingMode] = useState<ReadingMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
+  const [readingResult, setReadingResult] = useState<ReadingTestResult | null>(null);
   const [viewingSession, setViewingSession] = useState<TestSession | null>(null);
   const [history, setHistory] = useState<TestSession[]>([]);
   
@@ -107,19 +112,52 @@ export default function App() {
     setView('feedback');
   };
 
+  const handleReadingComplete = (result: ReadingTestResult) => {
+    setReadingResult(result);
+    setReturnTo('home');
+    
+    // Save to history
+    const newSession: TestSession = {
+      id: result.id,
+      date: result.date,
+      mode: result.mode,
+      candidateName: userName,
+      bandScore: result.bandScore,
+      duration: result.timeUsed,
+      feedback: result,
+    };
+    
+    setViewingSession(newSession);
+    const updatedHistory = [newSession, ...history];
+    setHistory(updatedHistory);
+    localStorage.setItem('express_yourself_history', JSON.stringify(updatedHistory));
+    
+    setView('reading_result');
+  };
+
   const handleClearHistory = () => {
     setHistory([]);
     localStorage.removeItem('express_yourself_history');
   };
 
   const handleViewDetails = (session: TestSession, from: 'home' | 'history' = 'history') => {
-    if (session.feedback) {
-      setFeedbackData(session.feedback);
-      setViewingSession(session);
-      setReturnTo(from);
-      setView('feedback');
+    setViewingSession(session);
+    setReturnTo(from);
+
+    if (['FULL_TEST', 'PRACTICE', 'TIMED', 'UNTIMED'].includes(session.mode)) {
+      if (session.feedback) {
+        setReadingResult(session.feedback as ReadingTestResult);
+        setView('reading_result');
+      } else {
+        alert("Reading feedback data is not available for this session.");
+      }
     } else {
-      alert("Feedback data is not available for this session.");
+      if (session.feedback) {
+        setFeedbackData(session.feedback as FeedbackData);
+        setView('feedback');
+      } else {
+        alert("Feedback data is not available for this session.");
+      }
     }
   };
 
@@ -238,6 +276,31 @@ export default function App() {
                 </button>
               </div>
             </header>
+
+            {/* Reading Module Card */}
+            <section>
+              <button
+                onClick={() => setView('reading')}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-8 text-left hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-white/20 transition-all" />
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div>
+                    <div className="inline-flex items-center space-x-2 bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
+                      <BookOpen className="w-3 h-3" />
+                      <span>New Feature</span>
+                    </div>
+                    <h2 className="text-3xl font-bold mb-2">IELTS Academic Reading</h2>
+                    <p className="text-emerald-100 max-w-lg">
+                      Practice with AI-generated academic passages, real-time grading, and detailed Bangla feedback.
+                    </p>
+                  </div>
+                  <div className="bg-white/20 p-4 rounded-2xl group-hover:scale-110 transition-transform self-end md:self-center">
+                    <ChevronRight className="w-8 h-8" />
+                  </div>
+                </div>
+              </button>
+            </section>
 
             {/* Mode Grid */}
             <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -420,6 +483,55 @@ export default function App() {
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {view === 'reading' && (
+          <motion.div
+            key="reading"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <ReadingDashboard 
+              onStartTest={(mode) => {
+                setSelectedReadingMode(mode);
+                setView('reading_test');
+              }}
+              onBack={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
+        {view === 'reading_test' && selectedReadingMode && (
+          <motion.div
+            key="reading_test"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-50"
+          >
+            <ReadingTestRunner
+              mode={selectedReadingMode}
+              onComplete={handleReadingComplete}
+              onExit={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
+        {view === 'reading_result' && readingResult && (
+          <motion.div
+            key="reading_result"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <ReadingResultView
+              result={readingResult}
+              onBack={() => setView(returnTo)}
+            />
           </motion.div>
         )}
 
