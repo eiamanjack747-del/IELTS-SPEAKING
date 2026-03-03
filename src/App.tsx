@@ -6,6 +6,8 @@ import {
   ChevronRight, Play, Star, Clock, User, ArrowLeft, AlertCircle, XCircle
 } from 'lucide-react';
 import { SplashScreen } from './components/SplashScreen';
+import { SettingsModal } from './components/SettingsModal';
+import { TipsView } from './components/TipsView';
 import { IELTSExaminer } from './components/IELTSExaminer';
 import { FeedbackView } from './components/FeedbackView';
 import { TestMode, TestSession, FeedbackData } from './types';
@@ -13,22 +15,63 @@ import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [viewingSession, setViewingSession] = useState<TestSession | null>(null);
   const [history, setHistory] = useState<TestSession[]>([]);
+  
+  // User Settings
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [userName, setUserName] = useState('Candidate');
+  const [targetBand, setTargetBand] = useState(7.0);
 
   const [returnTo, setReturnTo] = useState<'home' | 'history'>('home');
+  
+  // Audio State
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('express_yourself_history');
-    if (saved) setHistory(JSON.parse(saved));
+    const savedHistory = localStorage.getItem('express_yourself_history');
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
+
+    const savedSettings = localStorage.getItem('express_yourself_settings');
+    if (savedSettings) {
+      const { name, band } = JSON.parse(savedSettings);
+      if (name) setUserName(name);
+      if (band) setTargetBand(band);
+    }
   }, []);
 
-  const handleStartTest = (mode: TestMode) => {
-    setSelectedMode(mode);
-    setView('test');
+  useEffect(() => {
+    localStorage.setItem('express_yourself_settings', JSON.stringify({ name: userName, band: targetBand }));
+  }, [userName, targetBand]);
+
+  const requestMicrophone = async () => {
+    if (mediaStream) return true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
+      setMediaStream(stream);
+      return true;
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      alert("Microphone access is required for this app. Please allow access in your browser settings.");
+      return false;
+    }
+  };
+
+  const handleStartTest = async (mode: TestMode) => {
+    const hasAccess = await requestMicrophone();
+    if (hasAccess) {
+      setSelectedMode(mode);
+      setView('test');
+    }
   };
 
   const handleTestComplete = (data: FeedbackData) => {
@@ -40,7 +83,7 @@ export default function App() {
       id: Date.now().toString(),
       date: new Date().toISOString(),
       mode: selectedMode!,
-      candidateName: 'Candidate', 
+      candidateName: userName, 
       bandScore: data.bandScore,
       duration: 900, // Mock duration
       stressLevel: data.stressAnalysis.level,
@@ -53,6 +96,11 @@ export default function App() {
     localStorage.setItem('express_yourself_history', JSON.stringify(updatedHistory));
     
     setView('feedback');
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('express_yourself_history');
   };
 
   const handleViewDetails = (session: TestSession, from: 'home' | 'history' = 'history') => {
@@ -148,13 +196,31 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
+                {mediaStream && (
+                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-medium animate-pulse border border-red-100">
+                    <Mic className="w-3 h-3" />
+                    <span>Mic Ready</span>
+                  </div>
+                )}
+                <button 
+                  onClick={() => setView('tips')}
+                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="Tips & Resources"
+                >
+                  <Book className="w-6 h-6 text-zinc-600" />
+                </button>
                 <button 
                   onClick={() => setView('history')}
                   className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="History"
                 >
                   <HistoryIcon className="w-6 h-6 text-zinc-600" />
                 </button>
-                <button className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all">
+                <button 
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="Settings"
+                >
                   <Settings className="w-6 h-6 text-zinc-600" />
                 </button>
               </div>
@@ -233,6 +299,8 @@ export default function App() {
           >
             <IELTSExaminer 
               mode={selectedMode} 
+              userName={userName}
+              mediaStream={mediaStream}
               onComplete={handleTestComplete}
               onCancel={() => setView('home')}
             />
@@ -278,10 +346,17 @@ export default function App() {
 
             <div className="space-y-4">
               {history.length > 0 ? history.map((session) => (
-                <button 
+                <div 
                   key={session.id} 
                   onClick={() => handleViewDetails(session)}
-                  className="w-full bg-white border border-zinc-200 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all text-left group"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      handleViewDetails(session);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="w-full bg-white border border-zinc-200 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all text-left group cursor-pointer"
                 >
                   <div className="flex items-center space-x-6">
                     <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex flex-col items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors">
@@ -316,7 +391,7 @@ export default function App() {
                       <XCircle className="w-5 h-5" />
                     </button>
                   </div>
-                </button>
+                </div>
               )) : (
                 <div className="text-center py-20 space-y-4">
                   <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto">
@@ -331,11 +406,25 @@ export default function App() {
             </div>
           </motion.div>
         )}
+
+        {view === 'tips' && (
+          <TipsView onBack={() => setView('home')} />
+        )}
       </AnimatePresence>
       </div>
       <footer className="py-6 text-center text-zinc-400 text-sm">
         <p>Developed by <span className="font-bold text-zinc-600">Eiaman</span></p>
       </footer>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        userName={userName}
+        setUserName={setUserName}
+        targetBand={targetBand}
+        setTargetBand={setTargetBand}
+        onClearHistory={handleClearHistory}
+      />
     </div>
   );
 }

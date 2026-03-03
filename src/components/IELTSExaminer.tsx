@@ -15,13 +15,15 @@ import Markdown from 'react-markdown';
 
 interface IELTSExaminerProps {
   mode: TestMode;
+  userName?: string;
+  mediaStream: MediaStream | null;
   onComplete: (data: FeedbackData) => void;
   onCancel: () => void;
 }
 
-export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, onCancel }) => {
+export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, mediaStream, onComplete, onCancel }) => {
   const [status, setStatus] = useState<'idle' | 'connecting' | 'active' | 'feedback' | 'loading_feedback' | 'feedback_error'>('idle');
-  const [candidateName, setCandidateName] = useState<string>('');
+  const [candidateName, setCandidateName] = useState<string>(userName || '');
   const [currentQuestion, setCurrentQuestion] = useState<string>('');
   const [timer, setTimer] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -35,7 +37,8 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
   const liveServiceRef = useRef<GeminiLiveService | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
+  // mediaStreamRef is now derived from props, but we keep a ref for internal access if needed
+  // or just use the prop directly. Let's use the prop directly in startAudioCapture.
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef<boolean>(false);
@@ -45,9 +48,12 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
   const systemInstruction = `
     You are Md Eiaman, a professional IELTS Speaking Examiner and Advanced Speaking Coach for the app "Express Yourself".
     
+    CANDIDATE NAME: ${userName || 'Candidate'}
+    
     CORE ROLE:
     - Strictly follow official IELTS Speaking format in IELTS modes.
     - Use real IELTS-style tone (serious, professional, but encouraging).
+    - Address the candidate by name ("${userName || 'Candidate'}") naturally during the session.
     - Wait for user responses before continuing.
     - Use the candidate's name throughout the test once you know it.
     - Provide speaking interaction ONLY in English during the test.
@@ -117,8 +123,9 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
         await audioContextRef.current.resume();
       }
       
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
+      if (!mediaStream) {
+        throw new Error("No microphone access");
+      }
       
       const apiKey = process.env.GEMINI_API_KEY!;
       liveServiceRef.current = new GeminiLiveService(apiKey);
@@ -165,22 +172,37 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
     }
   };
 
-  const startAudioCapture = () => {
-    if (!mediaStreamRef.current) return;
+  const startAudioCapture = async () => {
+    if (!mediaStream) return;
     
-    const audioContext = new AudioContext({ sampleRate: 16000 });
+    // Use default sample rate (usually 44.1k or 48k) for better compatibility
+    const audioContext = new AudioContext();
     audioContextRef.current = audioContext;
     
-    const source = audioContext.createMediaStreamSource(mediaStreamRef.current);
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    
+    // Create a gain node with 0 gain to prevent feedback (hearing yourself)
+    const muteNode = audioContext.createGain();
+    muteNode.gain.value = 0;
+    
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     processorRef.current = processor;
 
     processor.onaudioprocess = (e) => {
       const inputData = e.inputBuffer.getChannelData(0);
-      // Convert Float32 to Int16 PCM
-      const pcmData = new Int16Array(inputData.length);
-      for (let i = 0; i < inputData.length; i++) {
-        pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+      const inputSampleRate = audioContext.sampleRate;
+      const targetSampleRate = 16000;
+      
+      // Downsample to 16kHz
+      const ratio = inputSampleRate / targetSampleRate;
+      const newLength = Math.floor(inputData.length / ratio);
+      const pcmData = new Int16Array(newLength);
+      
+      for (let i = 0; i < newLength; i++) {
+        const offset = Math.floor(i * ratio);
+        // Simple downsampling - for production, use a better filter
+        const sample = inputData[offset];
+        pcmData[i] = Math.max(-1, Math.min(1, sample)) * 0x7FFF;
       }
       
       // Convert to Base64
@@ -188,18 +210,22 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
       liveServiceRef.current?.sendAudio(base64);
     };
 
+    // Connect source -> processor -> muteNode -> destination
+    // This keeps the processor running but silences the output
     source.connect(processor);
-    processor.connect(audioContext.destination);
+    processor.connect(muteNode);
+    muteNode.connect(audioContext.destination);
   };
 
   const playAudioChunk = async (base64: string) => {
+    // Ensure AudioContext exists (it should from startAudioCapture)
     if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      audioContextRef.current = new AudioContext();
     }
     
     if (!gainNodeRef.current && audioContextRef.current) {
       const gainNode = audioContextRef.current.createGain();
-      gainNode.gain.value = volume; // Initialize with current volume state
+      gainNode.gain.value = volume;
       gainNode.connect(audioContextRef.current.destination);
       gainNodeRef.current = gainNode;
     }
@@ -212,6 +238,8 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
     const floatData = new Float32Array(pcmData.length);
     for (let i = 0; i < pcmData.length; i++) floatData[i] = pcmData[i] / 0x7FFF;
 
+    // Create buffer at 24kHz (Gemini's output rate)
+    // The AudioContext (running at 44.1/48k) will handle resampling automatically
     const buffer = audioContextRef.current.createBuffer(1, floatData.length, 24000);
     buffer.getChannelData(0).set(floatData);
     
@@ -258,8 +286,8 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
   const toggleMic = () => {
     const newMutedState = !isMicMuted;
     setIsMicMuted(newMutedState);
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getAudioTracks().forEach(track => {
+    if (mediaStream) {
+      mediaStream.getAudioTracks().forEach(track => {
         track.enabled = !newMutedState; // If muted, enabled should be false.
       });
     }
@@ -280,7 +308,7 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
   const endTest = async () => {
     setIsRecording(false);
     processorRef.current?.disconnect();
-    mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+    // Do NOT stop mediaStream tracks here to allow reuse without re-permission
     await liveServiceRef.current?.disconnect();
     
     generateFeedback();
@@ -522,7 +550,7 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, onComplete, 
             </div>
             {status === 'active' && (
               <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-64">
-                <AudioVisualizer stream={mediaStreamRef.current} isActive={isRecording} />
+                <AudioVisualizer stream={mediaStream} isActive={isRecording} />
               </div>
             )}
           </div>
