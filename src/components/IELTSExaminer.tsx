@@ -117,14 +117,14 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
   const startTest = async () => {
     setStatus('connecting');
     try {
-      // Resume AudioContext if suspended
-      if (audioContextRef.current?.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
-      
       if (!mediaStream) {
         throw new Error("No microphone access");
       }
+
+      // Initialize AudioContext synchronously on user interaction
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
+      await audioContext.resume();
       
       const apiKey = process.env.GEMINI_API_KEY!;
       liveServiceRef.current = new GeminiLiveService(apiKey);
@@ -133,7 +133,7 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
         onOpen: () => {
           setStatus('active');
           setIsRecording(true);
-          startAudioCapture();
+          startAudioCapture(audioContext);
         },
         onAudioData: (base64) => {
           playAudioChunk(base64);
@@ -179,13 +179,10 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     }
   };
 
-  const startAudioCapture = async () => {
+  const startAudioCapture = async (audioContext: AudioContext) => {
     if (!mediaStream) return;
     
-    // Use default sample rate (usually 44.1k or 48k) for better compatibility
-    const audioContext = new AudioContext();
-    audioContextRef.current = audioContext;
-    
+    // Use the passed AudioContext which is already resumed
     const source = audioContext.createMediaStreamSource(mediaStream);
     
     // Create a gain node with 0 gain to prevent feedback (hearing yourself)
