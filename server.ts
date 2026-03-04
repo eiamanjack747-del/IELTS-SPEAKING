@@ -23,8 +23,11 @@ async function startServer() {
 
   // Track active connections
   let activeUsers = 0;
-  // Store current notice
-  let currentNotice = "Welcome to the IELTS Speaking Practice App! Good luck with your preparation.";
+  // Store current notices
+  let notices = {
+    welcome: "Welcome to the IELTS Speaking Practice App! Good luck with your preparation.",
+    scrolling: "API Quota Exceeded? ১ মিনিট অপেক্ষা করুন (ফ্রি টায়ারে প্রতি মিনিটে লিমিট থাকে। ১ মিনিট পর আবার চেষ্টা করলে এটি ঠিক হয়ে যাবে।)"
+  };
 
   wss.on('connection', (ws: WebSocket) => {
     activeUsers++;
@@ -56,14 +59,15 @@ async function startServer() {
 
   // Notice API
   app.get('/api/notice', (req, res) => {
-    res.json({ notice: currentNotice });
+    res.json(notices);
   });
 
   app.post('/api/notice', (req, res) => {
-    const { notice, password } = req.body;
+    const { welcome, scrolling, password } = req.body;
     if (password === 'admin123') { // Simple hardcoded password
-      currentNotice = notice;
-      res.json({ success: true, notice: currentNotice });
+      if (welcome !== undefined) notices.welcome = welcome;
+      if (scrolling !== undefined) notices.scrolling = scrolling;
+      res.json({ success: true, notices });
     } else {
       res.status(401).json({ success: false, message: 'Invalid password' });
     }
@@ -75,6 +79,7 @@ async function startServer() {
     if (password === 'admin123') {
       res.json({ success: true });
     } else {
+      console.log(`Failed login attempt with password: ${password}`);
       res.status(401).json({ success: false, message: 'Invalid password' });
     }
   });

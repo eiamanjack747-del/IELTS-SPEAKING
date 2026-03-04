@@ -5,7 +5,8 @@ import { Lock, LogIn, Save, X } from 'lucide-react';
 export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [welcomeNotice, setWelcomeNotice] = useState('');
+  const [scrollingNotice, setScrollingNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -24,10 +25,11 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
 
       if (response.ok) {
         setIsAuthenticated(true);
-        // Fetch current notice
+        // Fetch current notices
         const noticeRes = await fetch('/api/notice');
         const data = await noticeRes.json();
-        setNotice(data.notice);
+        setWelcomeNotice(data.welcome);
+        setScrollingNotice(data.scrolling);
       } else {
         setError('Invalid password');
       }
@@ -48,14 +50,14 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
       const response = await fetch('/api/notice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notice, password }),
+        body: JSON.stringify({ welcome: welcomeNotice, scrolling: scrollingNotice, password }),
       });
 
       if (response.ok) {
-        setSuccess('Notice updated successfully!');
+        setSuccess('Notices updated successfully!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError('Failed to update notice');
+        setError('Failed to update notices');
       }
     } catch (err) {
       setError('Update failed');
@@ -93,9 +95,13 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                   placeholder="Enter password"
                 />
+                <p className="text-xs text-slate-500 mt-1">Password is case-sensitive (admin123)</p>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <button
@@ -115,15 +121,28 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
             <form onSubmit={handleSaveNotice} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  System Notice
+                  Welcome Notice (Blue Banner)
                 </label>
                 <textarea
-                  value={notice}
-                  onChange={(e) => setNotice(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all min-h-[100px]"
-                  placeholder="Enter notice text..."
+                  value={welcomeNotice}
+                  onChange={(e) => setWelcomeNotice(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all min-h-[80px]"
+                  placeholder="Enter welcome notice..."
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Scrolling Notice (Top Bar)
+                </label>
+                <textarea
+                  value={scrollingNotice}
+                  onChange={(e) => setScrollingNotice(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all min-h-[80px]"
+                  placeholder="Enter scrolling notice..."
+                />
+              </div>
+
               {error && <p className="text-red-500 text-sm">{error}</p>}
               {success && <p className="text-green-500 text-sm">{success}</p>}
               <button
@@ -134,7 +153,7 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
                 {loading ? 'Saving...' : (
                   <>
                     <Save className="w-4 h-4" />
-                    Update Notice
+                    Update Notices
                   </>
                 )}
               </button>

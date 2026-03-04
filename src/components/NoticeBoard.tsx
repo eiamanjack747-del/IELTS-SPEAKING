@@ -12,7 +12,7 @@ export const NoticeBoard = () => {
         const response = await fetch('/api/notice');
         if (response.ok) {
           const data = await response.json();
-          setNotice(data.notice);
+          setNotice(data.welcome);
         }
       } catch (error) {
         console.error('Failed to fetch notice:', error);
