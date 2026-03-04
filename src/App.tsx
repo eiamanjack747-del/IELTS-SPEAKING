@@ -24,6 +24,8 @@ import { Dashboard } from './components/dashboard/Dashboard';
 import { StrategyView } from './components/StrategyView';
 import { QuotaNotice } from './components/QuotaNotice';
 import { ScrollingNotice } from './components/ScrollingNotice';
+import { NoticeBoard } from './components/NoticeBoard';
+import { AdminPanel } from './components/AdminPanel';
 import { 
   TestMode, TestSession, FeedbackData, 
   ReadingMode, ReadingTestResult,
@@ -33,7 +35,7 @@ import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'reading' | 'reading_test' | 'reading_result' | 'writing' | 'writing_test' | 'writing_result' | 'planner' | 'vocab' | 'dashboard' | 'strategy' | 'grammar'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'reading' | 'reading_test' | 'reading_result' | 'writing' | 'writing_test' | 'writing_result' | 'planner' | 'vocab' | 'dashboard' | 'strategy' | 'grammar' | 'speaking_dashboard'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [selectedReadingMode, setSelectedReadingMode] = useState<ReadingMode | null>(null);
   const [selectedWritingMode, setSelectedWritingMode] = useState<WritingMode | null>(null);
@@ -46,6 +48,7 @@ export default function App() {
   
   // User Settings
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [userName, setUserName] = useState('Candidate');
   const [targetBand, setTargetBand] = useState(7.0);
   const [showLiveUsers, setShowLiveUsers] = useState(true);
@@ -284,6 +287,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-zinc-900 font-sans flex flex-col">
       <ScrollingNotice />
+      <NoticeBoard />
       <QuotaNotice 
         isOpen={isQuotaNoticeOpen} 
         onClose={() => setIsQuotaNoticeOpen(false)} 
@@ -368,73 +372,65 @@ export default function App() {
               </div>
             </header>
 
-            {/* Module Grid */}
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Reading Card */}
+            {/* Main Modules List */}
+            <section className="space-y-6">
+              {/* Reading Module */}
               <button
                 onClick={() => setView('reading')}
-                className="bg-white border border-zinc-200 rounded-3xl p-8 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 group"
+                className="w-full bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 group flex flex-col md:flex-row items-start md:items-center gap-6"
               >
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300">
-                  <BookOpen className="w-7 h-7" />
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-emerald-500/20">
+                  <BookOpen className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">Reading</h3>
-                <p className="text-zinc-500 text-sm leading-relaxed mb-6">
-                  Practice academic passages with real-time grading and Bangla feedback.
-                </p>
-                <div className="flex items-center text-emerald-600 font-bold text-sm">
-                  <span>Open Module</span>
-                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                <div className="flex-grow">
+                  <h3 className="text-2xl font-bold mb-2 text-zinc-800">Reading Module</h3>
+                  <p className="text-zinc-500 leading-relaxed">
+                    Practice academic passages with real-time grading and Bangla feedback.
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-zinc-50 group-hover:bg-emerald-50 text-zinc-300 group-hover:text-emerald-600 transition-colors">
+                  <ChevronRight className="w-6 h-6" />
                 </div>
               </button>
 
-              {/* Writing Card */}
+              {/* Writing Module */}
               <button
                 onClick={() => setView('writing')}
-                className="bg-white border border-zinc-200 rounded-3xl p-8 text-left hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300 group"
+                className="w-full bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 text-left hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300 group flex flex-col md:flex-row items-start md:items-center gap-6"
               >
-                <div className="w-14 h-14 rounded-2xl bg-purple-500 text-white flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300">
-                  <PenTool className="w-7 h-7" />
+                <div className="w-16 h-16 rounded-2xl bg-purple-500 text-white flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-purple-500/20">
+                  <PenTool className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">Writing</h3>
-                <p className="text-zinc-500 text-sm leading-relaxed mb-6">
-                  Task 1 & 2 evaluation with grammar highlight and band estimation.
-                </p>
-                <div className="flex items-center text-purple-600 font-bold text-sm">
-                  <span>Open Module</span>
-                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                <div className="flex-grow">
+                  <h3 className="text-2xl font-bold mb-2 text-zinc-800">Writing Module</h3>
+                  <p className="text-zinc-500 leading-relaxed">
+                    Task 1 & 2 evaluation with grammar highlight and band estimation.
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-zinc-50 group-hover:bg-purple-50 text-zinc-300 group-hover:text-purple-600 transition-colors">
+                  <ChevronRight className="w-6 h-6" />
+                </div>
+              </button>
+
+              {/* Speaking Module */}
+              <button
+                onClick={() => setView('speaking_dashboard')}
+                className="w-full bg-white border border-zinc-200 rounded-3xl p-6 md:p-8 text-left hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 group flex flex-col md:flex-row items-start md:items-center gap-6"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-blue-500 text-white flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 duration-300 shadow-lg shadow-blue-500/20">
+                  <Mic className="w-8 h-8" />
+                </div>
+                <div className="flex-grow">
+                  <h3 className="text-2xl font-bold mb-2 text-zinc-800">Speaking Module</h3>
+                  <p className="text-zinc-500 leading-relaxed">
+                    Full mock tests, part-wise practice, and daily conversation simulations.
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center justify-center w-12 h-12 rounded-full bg-zinc-50 group-hover:bg-blue-50 text-zinc-300 group-hover:text-blue-600 transition-colors">
+                  <ChevronRight className="w-6 h-6" />
                 </div>
               </button>
             </section>
-
-            {/* Speaking Modes Title */}
-            <div className="pt-8">
-              <h2 className="text-2xl font-bold mb-6">Speaking Practice</h2>
-              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modes.map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => handleStartTest(mode.id as TestMode)}
-                    className="group relative bg-white border border-zinc-200 rounded-3xl p-6 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden"
-                  >
-                    <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300",
-                      mode.color, "text-white"
-                    )}>
-                      <mode.icon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">{mode.title}</h3>
-                    <p className="text-zinc-500 text-sm leading-relaxed mb-6">
-                      {mode.desc}
-                    </p>
-                    <div className="flex items-center text-emerald-600 font-bold text-sm">
-                      <span>Start Session</span>
-                      <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </button>
-                ))}
-              </section>
-            </div>
 
             {/* Recent Activity Mini-View */}
             {history.length > 0 && (
@@ -590,6 +586,52 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {view === 'speaking_dashboard' && (
+          <motion.div
+            key="speaking_dashboard"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="max-w-5xl mx-auto px-6 py-12 space-y-8"
+          >
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={() => setView('home')}
+                className="flex items-center space-x-2 text-zinc-500 hover:text-zinc-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium">Back to Home</span>
+              </button>
+              <h1 className="text-3xl font-bold">Speaking Practice</h1>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {modes.map((mode) => (
+                <button
+                  key={mode.id}
+                  onClick={() => handleStartTest(mode.id as TestMode)}
+                  className="group relative bg-white border border-zinc-200 rounded-3xl p-6 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden"
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300",
+                    mode.color, "text-white"
+                  )}>
+                    <mode.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{mode.title}</h3>
+                  <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+                    {mode.desc}
+                  </p>
+                  <div className="flex items-center text-emerald-600 font-bold text-sm">
+                    <span>Start Session</span>
+                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              ))}
             </div>
           </motion.div>
         )}
@@ -758,6 +800,12 @@ export default function App() {
       </div>
       <footer className="py-6 text-center text-zinc-400 text-sm">
         <p>Developed by <span className="font-bold text-zinc-600">Eiaman</span></p>
+        <button 
+          onClick={() => setIsAdminOpen(true)}
+          className="mt-2 text-xs text-zinc-300 hover:text-zinc-500 transition-colors"
+        >
+          Admin Login
+        </button>
       </footer>
 
       <SettingsModal
@@ -771,6 +819,10 @@ export default function App() {
         setShowLiveUsers={setShowLiveUsers}
         onClearHistory={handleClearHistory}
       />
+      
+      <AnimatePresence>
+        {isAdminOpen && <AdminPanel onClose={() => setIsAdminOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

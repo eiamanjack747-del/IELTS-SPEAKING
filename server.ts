@@ -15,11 +15,16 @@ async function startServer() {
   // Create HTTP server
   const server = http.createServer(app);
 
+  // Middleware to parse JSON bodies
+  app.use(express.json());
+
   // Create WebSocket server
   const wss = new WebSocketServer({ server });
 
   // Track active connections
   let activeUsers = 0;
+  // Store current notice
+  let currentNotice = "Welcome to the IELTS Speaking Practice App! Good luck with your preparation.";
 
   wss.on('connection', (ws: WebSocket) => {
     activeUsers++;
@@ -47,6 +52,31 @@ async function startServer() {
   // API routes FIRST
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  // Notice API
+  app.get('/api/notice', (req, res) => {
+    res.json({ notice: currentNotice });
+  });
+
+  app.post('/api/notice', (req, res) => {
+    const { notice, password } = req.body;
+    if (password === 'admin123') { // Simple hardcoded password
+      currentNotice = notice;
+      res.json({ success: true, notice: currentNotice });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+  });
+
+  // Login API
+  app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (password === 'admin123') {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid password' });
+    }
   });
 
   // Vite middleware for development

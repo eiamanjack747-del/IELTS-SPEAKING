@@ -122,6 +122,17 @@ export class GeminiLiveService {
                   },
                   required: ["bandScore", "criteria", "banglaFeedback", "stressAnalysis"]
                 }
+              },
+              {
+                name: "startTimer",
+                description: "Start a silent timer for the candidate to prepare. The app will handle the silence and notify you when time is up.",
+                parameters: {
+                  type: Type.OBJECT,
+                  properties: {
+                    durationSeconds: { type: Type.NUMBER, description: "Duration in seconds (e.g., 60)" }
+                  },
+                  required: ["durationSeconds"]
+                }
               }
             ]
           }
@@ -134,6 +145,15 @@ export class GeminiLiveService {
     if (!this.session || !this.isConnected) return;
     await this.session.sendRealtimeInput({
       media: { data: base64Data, mimeType: "audio/pcm;rate=16000" },
+    });
+  }
+
+  async sendText(text: string) {
+    if (!this.session || !this.isConnected) return;
+    // Browser-compatible base64 encoding for UTF-8 strings
+    const base64 = btoa(unescape(encodeURIComponent(text)));
+    await this.session.sendRealtimeInput({
+      media: { mimeType: "text/plain", data: base64 }
     });
   }
 
