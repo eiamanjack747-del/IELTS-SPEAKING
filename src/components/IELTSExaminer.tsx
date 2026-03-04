@@ -553,9 +553,14 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
                 <User className="w-16 h-16 text-zinc-300" />
               )}
             </div>
-            {status === 'active' && (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-64">
-                <AudioVisualizer stream={mediaStream} isActive={isRecording} />
+            
+            {/* Show visualizer in both idle (for testing) and active states */}
+            {(status === 'active' || status === 'idle') && mediaStream && (
+              <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-64 flex flex-col items-center space-y-2">
+                <AudioVisualizer stream={mediaStream} isActive={true} />
+                {status === 'idle' && (
+                  <span className="text-xs text-zinc-400">Speak to test microphone</span>
+                )}
               </div>
             )}
           </div>

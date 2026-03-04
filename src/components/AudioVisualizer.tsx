@@ -13,6 +13,9 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isActi
     if (!stream || !isActive || !canvasRef.current) return;
 
     const audioContext = new AudioContext();
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
     const source = audioContext.createMediaStreamSource(stream);
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 256;

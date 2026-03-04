@@ -73,7 +73,16 @@ export default function App() {
   }, [userName, targetBand, showLiveUsers]);
 
   const requestMicrophone = async () => {
-    if (mediaStream) return true;
+    if (mediaStream) {
+      if (mediaStream.active) {
+        return true;
+      } else {
+        // Stream exists but is inactive, stop tracks and clear it
+        mediaStream.getTracks().forEach(track => track.stop());
+        setMediaStream(null);
+      }
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -82,6 +91,15 @@ export default function App() {
           autoGainControl: true,
         }
       });
+      
+      // Add listener for track ending (e.g. user revokes permission or unplugged)
+      stream.getAudioTracks().forEach(track => {
+        track.onended = () => {
+          console.log("Microphone track ended");
+          setMediaStream(null);
+        };
+      });
+
       setMediaStream(stream);
       return true;
     } catch (err) {
