@@ -1,4 +1,5 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
+import { handleGeminiError } from "../utils";
 
 export interface LiveSessionCallbacks {
   onOpen?: () => void;
@@ -34,6 +35,7 @@ export class GeminiLiveService {
           callbacks.onClose?.();
         },
         onerror: (error) => {
+          handleGeminiError(error);
           callbacks.onError?.(error);
         },
         onmessage: async (message: LiveServerMessage) => {
@@ -115,15 +117,6 @@ export class GeminiLiveService {
                             speed: { type: Type.NUMBER },
                           }
                         }
-                      }
-                    },
-                    visaInterview: {
-                      type: Type.OBJECT,
-                      properties: {
-                        confidenceScore: { type: Type.NUMBER },
-                        clarityScore: { type: Type.NUMBER },
-                        riskLevel: { type: Type.STRING },
-                        embassyImpression: { type: Type.STRING }
                       }
                     }
                   },

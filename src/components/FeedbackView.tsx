@@ -65,43 +65,6 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({ data, onRestart, mod
         </div>
       </div>
 
-      {/* Visa Interview Specific Results */}
-      {data.visaInterview && (
-        <section className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm space-y-6">
-          <div className="flex items-center space-x-2 font-bold text-xl text-zinc-900">
-            <Award className="w-6 h-6 text-emerald-500" />
-            <span>Visa Interview Performance</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-zinc-50 rounded-2xl p-4 text-center space-y-1">
-              <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Confidence</div>
-              <div className="text-2xl font-black text-emerald-600">{data.visaInterview.confidenceScore}/10</div>
-            </div>
-            <div className="bg-zinc-50 rounded-2xl p-4 text-center space-y-1">
-              <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Clarity</div>
-              <div className="text-2xl font-black text-blue-600">{data.visaInterview.clarityScore}/10</div>
-            </div>
-            <div className="bg-zinc-50 rounded-2xl p-4 text-center space-y-1">
-              <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Risk Level</div>
-              <div className={cn(
-                "text-2xl font-black",
-                data.visaInterview.riskLevel === 'Low' ? "text-emerald-600" :
-                data.visaInterview.riskLevel === 'Moderate' ? "text-amber-600" :
-                "text-red-600"
-              )}>
-                {data.visaInterview.riskLevel}
-              </div>
-            </div>
-          </div>
-          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6">
-            <div className="text-sm font-bold text-emerald-800 mb-2">Embassy Impression</div>
-            <p className="text-zinc-700 text-sm leading-relaxed">
-              {data.visaInterview.embassyImpression}
-            </p>
-          </div>
-        </section>
-      )}
-
       {/* Criteria Breakdown */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

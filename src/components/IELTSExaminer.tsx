@@ -6,10 +6,10 @@ import {
   ChevronRight, ArrowLeft, Loader2, Volume2, VolumeX,
   CheckCircle2, XCircle, RefreshCw
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { GeminiLiveService } from '../services/geminiLive';
 import { AudioVisualizer } from './AudioVisualizer';
-import { cn, formatDuration } from '../utils';
+import { cn, formatDuration, handleGeminiError } from '../utils';
 import { TestMode, TestSession, FeedbackData } from '../types';
 import Markdown from 'react-markdown';
 
@@ -72,13 +72,6 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
     - Scenarios: Airport, Hotel Check-in, Doctor, Bank, University.
     - Randomly pick one scenario and start the conversation.
     - After conversation ends, call 'submitFeedback'.
-    ` : mode === 'VISA_INTERVIEW' ? `
-    VISA INTERVIEW MODE:
-    - Professional embassy simulation.
-    - Types: Student Visa, Work Visa, Tourist Visa.
-    - Randomly pick one type and start the interview.
-    - Features: Formal tone, unexpected follow-ups, pressure simulation.
-    - After interview ends, call 'submitFeedback'.
     ` : `
     IELTS MODES (FULL_MOCK, PART_1, PART_2, PART_3):
     - MANDATORY OPENING SCRIPT (Only for FULL_MOCK or PART_1):
@@ -156,6 +149,9 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
               setCurrentQuestion(text);
             }
           }
+        },
+        onError: (err) => {
+          handleGeminiError(err);
         },
         onToolCall: (call) => {
           if (call.functionCalls) {
@@ -362,21 +358,16 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
               "pauses": number,
               "speed": number
             }
-          },
-          "visaInterview": { // Optional, only if mode is VISA_INTERVIEW
-             "confidenceScore": number,
-             "clarityScore": number,
-             "riskLevel": "Low" | "Moderate" | "High",
-             "embassyImpression": "string"
           }
         }
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -430,15 +421,6 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
                 },
                 required: ["level", "advice", "metrics"],
               },
-              visaInterview: {
-                type: Type.OBJECT,
-                properties: {
-                  confidenceScore: { type: Type.NUMBER },
-                  clarityScore: { type: Type.NUMBER },
-                  riskLevel: { type: Type.STRING, enum: ["Low", "Moderate", "High"] },
-                  embassyImpression: { type: Type.STRING },
-                },
-              },
             },
             required: ["bandScore", "criteria", "banglaFeedback", "stressAnalysis"],
           },
@@ -449,7 +431,11 @@ export const IELTSExaminer: React.FC<IELTSExaminerProps> = ({ mode, userName, me
       onComplete(data);
     } catch (error) {
       console.error("Feedback generation failed:", error);
-      setStatus('feedback_error');
+      if (!handleGeminiError(error)) {
+        setStatus('feedback_error');
+      } else {
+        setStatus('idle');
+      }
     }
   };
 

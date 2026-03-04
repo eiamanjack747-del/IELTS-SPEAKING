@@ -10,3 +10,12 @@ export function formatDuration(seconds: number): string {
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
+
+export function handleGeminiError(error: any) {
+  const errorMessage = error?.message?.toLowerCase() || "";
+  if (errorMessage.includes("quota") || errorMessage.includes("429") || errorMessage.includes("limit exceeded")) {
+    window.dispatchEvent(new CustomEvent('gemini-quota-exceeded'));
+    return true;
+  }
+  return false;
+}

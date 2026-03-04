@@ -1,6 +1,8 @@
-export type TestMode = 'FULL_MOCK' | 'PART_1' | 'PART_2' | 'PART_3' | 'DAILY_CONVO' | 'VISA_INTERVIEW';
+export type TestMode = 'FULL_MOCK' | 'PART_1' | 'PART_2' | 'PART_3' | 'DAILY_CONVO';
 
 export type ReadingMode = 'FULL_TEST' | 'PRACTICE' | 'TIMED' | 'UNTIMED';
+
+export type WritingMode = 'TASK_1' | 'TASK_2' | 'FULL_TEST';
 
 export type ReadingQuestionType = 
   | 'multiple_choice'
@@ -60,16 +62,49 @@ export interface ReadingTestResult {
   };
 }
 
+export interface WritingTask {
+  id: string;
+  type: 'TASK_1' | 'TASK_2';
+  prompt: string;
+  imageUrl?: string; // For Task 1 graphs/charts
+  wordLimit: number;
+  timeLimit: number;
+}
+
+export interface WritingResult {
+  id: string;
+  date: string;
+  taskType: 'TASK_1' | 'TASK_2';
+  userText: string;
+  wordCount: number;
+  timeUsed: number;
+  bandScore: number;
+  criteriaScores: {
+    taskResponse: number;
+    coherence: number;
+    lexical: number;
+    grammar: number;
+  };
+  feedback: {
+    banglaSummary: string;
+    strengths: string[];
+    weaknesses: string[];
+    grammarCorrections: { original: string; corrected: string; explanation: string }[];
+    vocabularySuggestions: { word: string; betterAlternative: string; context: string }[];
+    improvementPlan: string[];
+  };
+}
+
 export interface TestSession {
   id: string;
   date: string;
-  mode: TestMode | ReadingMode; // Allow both speaking and reading modes
+  mode: TestMode | ReadingMode | WritingMode;
   candidateName: string;
   topic?: string;
   bandScore?: number;
-  feedback?: FeedbackData | ReadingTestResult; // Allow both feedback types
+  feedback?: FeedbackData | ReadingTestResult | WritingResult;
   duration: number;
-  stressLevel?: 'Low' | 'Moderate' | 'High'; // Optional for reading
+  stressLevel?: 'Low' | 'Moderate' | 'High';
 }
 
 export interface FeedbackData {
@@ -95,11 +130,5 @@ export interface FeedbackData {
       pauses: number;
       speed: number;
     };
-  };
-  visaInterview?: {
-    confidenceScore: number;
-    clarityScore: number;
-    riskLevel: 'Low' | 'Moderate' | 'High';
-    embassyImpression: string;
   };
 }

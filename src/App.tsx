@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Mic, MessageCircle, Globe, Book, BookOpen,
-  History as HistoryIcon, Award, Settings,
-  ChevronRight, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb
+  Mic, MessageCircle, Globe, Book, BookOpen, PenTool, Headphones,
+  History as HistoryIcon, Award, Settings, Sparkles, Calendar, BarChart3, Target, TrendingUp,
+  ChevronRight, Star, Clock, User, ArrowLeft, AlertCircle, XCircle, Lightbulb, Flag, Heart,
+  ShieldAlert, Search, Zap, Volume2
 } from 'lucide-react';
 import { SplashScreen } from './components/SplashScreen';
 import { SettingsModal } from './components/SettingsModal';
@@ -14,16 +15,32 @@ import { LiveUsers } from './components/LiveUsers';
 import { ReadingDashboard } from './components/reading/ReadingDashboard';
 import { ReadingTestRunner } from './components/reading/ReadingTestRunner';
 import { ReadingResultView } from './components/reading/ReadingResultView';
-import { TestMode, TestSession, FeedbackData, ReadingMode, ReadingTestResult } from './types';
+import { WritingDashboard } from './components/writing/WritingDashboard';
+import { WritingTestRunner } from './components/writing/WritingTestRunner';
+import { WritingResultView } from './components/writing/WritingResultView';
+import { StudyPlanner } from './components/planner/StudyPlanner';
+import { VocabBooster } from './components/vocab/VocabBooster';
+import { Dashboard } from './components/dashboard/Dashboard';
+import { StrategyView } from './components/StrategyView';
+import { QuotaNotice } from './components/QuotaNotice';
+import { ScrollingNotice } from './components/ScrollingNotice';
+import { 
+  TestMode, TestSession, FeedbackData, 
+  ReadingMode, ReadingTestResult,
+  WritingMode, WritingResult
+} from './types';
 import { cn } from './utils';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'reading' | 'reading_test' | 'reading_result'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'feedback' | 'history' | 'tips' | 'reading' | 'reading_test' | 'reading_result' | 'writing' | 'writing_test' | 'writing_result' | 'planner' | 'vocab' | 'dashboard' | 'strategy' | 'grammar'>('home');
   const [selectedMode, setSelectedMode] = useState<TestMode | null>(null);
   const [selectedReadingMode, setSelectedReadingMode] = useState<ReadingMode | null>(null);
+  const [selectedWritingMode, setSelectedWritingMode] = useState<WritingMode | null>(null);
   const [feedbackData, setFeedbackData] = useState<FeedbackData | null>(null);
   const [readingResult, setReadingResult] = useState<ReadingTestResult | null>(null);
+  const [writingResult, setWritingResult] = useState<WritingResult | null>(null);
+  const [isQuotaNoticeOpen, setIsQuotaNoticeOpen] = useState(false);
   const [viewingSession, setViewingSession] = useState<TestSession | null>(null);
   const [history, setHistory] = useState<TestSession[]>([]);
   
@@ -31,6 +48,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userName, setUserName] = useState('Candidate');
   const [targetBand, setTargetBand] = useState(7.0);
+  const [showLiveUsers, setShowLiveUsers] = useState(true);
 
   const [returnTo, setReturnTo] = useState<'home' | 'history'>('home');
   
@@ -43,15 +61,16 @@ export default function App() {
 
     const savedSettings = localStorage.getItem('express_yourself_settings');
     if (savedSettings) {
-      const { name, band } = JSON.parse(savedSettings);
+      const { name, band, showLiveUsers: savedShowLiveUsers } = JSON.parse(savedSettings);
       if (name) setUserName(name);
       if (band) setTargetBand(band);
+      if (savedShowLiveUsers !== undefined) setShowLiveUsers(savedShowLiveUsers);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('express_yourself_settings', JSON.stringify({ name: userName, band: targetBand }));
-  }, [userName, targetBand]);
+    localStorage.setItem('express_yourself_settings', JSON.stringify({ name: userName, band: targetBand, showLiveUsers }));
+  }, [userName, targetBand, showLiveUsers]);
 
   const requestMicrophone = async () => {
     if (mediaStream) return true;
@@ -135,6 +154,28 @@ export default function App() {
     setView('reading_result');
   };
 
+  const handleWritingComplete = (result: WritingResult) => {
+    setWritingResult(result);
+    setReturnTo('home');
+    
+    const newSession: TestSession = {
+      id: result.id,
+      date: result.date,
+      mode: result.taskType,
+      candidateName: userName,
+      bandScore: result.bandScore,
+      duration: result.timeUsed,
+      feedback: result,
+    };
+    
+    setViewingSession(newSession);
+    const updatedHistory = [newSession, ...history];
+    setHistory(updatedHistory);
+    localStorage.setItem('express_yourself_history', JSON.stringify(updatedHistory));
+    
+    setView('writing_result');
+  };
+
   const handleClearHistory = () => {
     setHistory([]);
     localStorage.removeItem('express_yourself_history');
@@ -150,6 +191,13 @@ export default function App() {
         setView('reading_result');
       } else {
         alert("Reading feedback data is not available for this session.");
+      }
+    } else if (['TASK_1', 'TASK_2'].includes(session.mode)) {
+      if (session.feedback) {
+        setWritingResult(session.feedback as WritingResult);
+        setView('writing_result');
+      } else {
+        alert("Writing feedback data is not available for this session.");
       }
     } else {
       if (session.feedback) {
@@ -203,14 +251,13 @@ export default function App() {
       icon: Globe,
       color: 'bg-indigo-500'
     },
-    { 
-      id: 'VISA_INTERVIEW', 
-      title: 'Visa Interview', 
-      desc: 'Professional embassy simulation.', 
-      icon: User,
-      color: 'bg-zinc-900'
-    },
   ];
+
+  useEffect(() => {
+    const handleQuotaError = () => setIsQuotaNoticeOpen(true);
+    window.addEventListener('gemini-quota-exceeded', handleQuotaError);
+    return () => window.removeEventListener('gemini-quota-exceeded', handleQuotaError);
+  }, []);
 
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
@@ -218,6 +265,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-zinc-900 font-sans flex flex-col">
+      <ScrollingNotice />
+      <QuotaNotice 
+        isOpen={isQuotaNoticeOpen} 
+        onClose={() => setIsQuotaNoticeOpen(false)} 
+      />
       <div className="flex-grow">
       <AnimatePresence mode="wait">
         {view === 'home' && (
@@ -234,6 +286,7 @@ export default function App() {
                 <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
                   <Star className="w-3 h-3 fill-current" />
                   <span>AI-Powered IELTS Coach</span>
+                  {showLiveUsers && <LiveUsers />}
                 </div>
                 <h2 className="text-2xl font-bold text-zinc-400 mt-2">
                   {new Date().getHours() < 12 ? 'Good Morning' : 'Good Day'}, {userName}
@@ -246,13 +299,26 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center space-x-4">
-                <LiveUsers />
                 {mediaStream && (
                   <div className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-medium animate-pulse border border-red-100">
                     <Mic className="w-3 h-3" />
                     <span>Mic Ready</span>
                   </div>
                 )}
+                <button 
+                  onClick={() => setView('strategy')}
+                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="Exam Strategy"
+                >
+                  <Target className="w-6 h-6 text-zinc-600" />
+                </button>
+                <button 
+                  onClick={() => setView('dashboard')}
+                  className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
+                  title="Dashboard"
+                >
+                  <BarChart3 className="w-6 h-6 text-zinc-600" />
+                </button>
                 <button 
                   onClick={() => setView('tips')}
                   className="p-3 bg-white border border-zinc-200 rounded-2xl shadow-sm hover:bg-zinc-50 transition-all"
@@ -274,59 +340,83 @@ export default function App() {
                 >
                   <Settings className="w-6 h-6 text-zinc-600" />
                 </button>
+                <button 
+                  onClick={() => setIsQuotaNoticeOpen(true)}
+                  className="p-3 bg-amber-50 border border-amber-100 rounded-2xl shadow-sm hover:bg-amber-100 transition-all"
+                  title="API Status & Help"
+                >
+                  <ShieldAlert className="w-6 h-6 text-amber-600" />
+                </button>
               </div>
             </header>
 
-            {/* Reading Module Card */}
-            <section>
+            {/* Module Grid */}
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Reading Card */}
               <button
                 onClick={() => setView('reading')}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl p-8 text-left hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 group relative overflow-hidden"
+                className="bg-white border border-zinc-200 rounded-3xl p-8 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 group"
               >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-white/20 transition-all" />
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                  <div>
-                    <div className="inline-flex items-center space-x-2 bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
-                      <BookOpen className="w-3 h-3" />
-                      <span>New Feature</span>
-                    </div>
-                    <h2 className="text-3xl font-bold mb-2">IELTS Academic Reading</h2>
-                    <p className="text-emerald-100 max-w-lg">
-                      Practice with AI-generated academic passages, real-time grading, and detailed Bangla feedback.
-                    </p>
-                  </div>
-                  <div className="bg-white/20 p-4 rounded-2xl group-hover:scale-110 transition-transform self-end md:self-center">
-                    <ChevronRight className="w-8 h-8" />
-                  </div>
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300">
+                  <BookOpen className="w-7 h-7" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Reading</h3>
+                <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+                  Practice academic passages with real-time grading and Bangla feedback.
+                </p>
+                <div className="flex items-center text-emerald-600 font-bold text-sm">
+                  <span>Open Module</span>
+                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              {/* Writing Card */}
+              <button
+                onClick={() => setView('writing')}
+                className="bg-white border border-zinc-200 rounded-3xl p-8 text-left hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-300 group"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-purple-500 text-white flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300">
+                  <PenTool className="w-7 h-7" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Writing</h3>
+                <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+                  Task 1 & 2 evaluation with grammar highlight and band estimation.
+                </p>
+                <div className="flex items-center text-purple-600 font-bold text-sm">
+                  <span>Open Module</span>
+                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
             </section>
 
-            {/* Mode Grid */}
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {modes.map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => handleStartTest(mode.id as TestMode)}
-                  className="group relative bg-white border border-zinc-200 rounded-3xl p-6 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden"
-                >
-                  <div className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300",
-                    mode.color, "text-white"
-                  )}>
-                    <mode.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{mode.title}</h3>
-                  <p className="text-zinc-500 text-sm leading-relaxed mb-6">
-                    {mode.desc}
-                  </p>
-                  <div className="flex items-center text-emerald-600 font-bold text-sm">
-                    <span>Start Session</span>
-                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </button>
-              ))}
-            </section>
+            {/* Speaking Modes Title */}
+            <div className="pt-8">
+              <h2 className="text-2xl font-bold mb-6">Speaking Practice</h2>
+              <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {modes.map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => handleStartTest(mode.id as TestMode)}
+                    className="group relative bg-white border border-zinc-200 rounded-3xl p-6 text-left hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-300 overflow-hidden"
+                  >
+                    <div className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300",
+                      mode.color, "text-white"
+                    )}>
+                      <mode.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">{mode.title}</h3>
+                    <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+                      {mode.desc}
+                    </p>
+                    <div className="flex items-center text-emerald-600 font-bold text-sm">
+                      <span>Start Session</span>
+                      <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </button>
+                ))}
+              </section>
+            </div>
 
             {/* Recent Activity Mini-View */}
             {history.length > 0 && (
@@ -535,6 +625,114 @@ export default function App() {
           </motion.div>
         )}
 
+        {view === 'writing' && (
+          <motion.div
+            key="writing"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <WritingDashboard 
+              onStartTest={(mode) => {
+                setSelectedWritingMode(mode);
+                setView('writing_test');
+              }}
+              onBack={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
+        {view === 'writing_test' && selectedWritingMode && (
+          <motion.div
+            key="writing_test"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-50"
+          >
+            <WritingTestRunner
+              mode={selectedWritingMode}
+              onComplete={handleWritingComplete}
+              onExit={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
+        {view === 'writing_result' && writingResult && (
+          <motion.div
+            key="writing_result"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <WritingResultView
+              result={writingResult}
+              onBack={() => setView(returnTo)}
+            />
+          </motion.div>
+        )}
+
+        {view === 'planner' && (
+          <motion.div
+            key="planner"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <StudyPlanner 
+              onBack={() => setView('home')} 
+              userName={userName}
+            />
+          </motion.div>
+        )}
+
+        {view === 'vocab' && (
+          <motion.div
+            key="vocab"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <VocabBooster 
+              onBack={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
+        {view === 'dashboard' && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <Dashboard 
+              history={history}
+              onBack={() => setView('home')}
+              onNavigate={(v) => setView(v)}
+            />
+          </motion.div>
+        )}
+
+        {view === 'strategy' && (
+          <motion.div
+            key="strategy"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-screen bg-zinc-50"
+          >
+            <StrategyView 
+              onBack={() => setView('home')}
+            />
+          </motion.div>
+        )}
+
         {view === 'tips' && (
           <TipsView onBack={() => setView('home')} />
         )}
@@ -551,6 +749,8 @@ export default function App() {
         setUserName={setUserName}
         targetBand={targetBand}
         setTargetBand={setTargetBand}
+        showLiveUsers={showLiveUsers}
+        setShowLiveUsers={setShowLiveUsers}
         onClearHistory={handleClearHistory}
       />
     </div>

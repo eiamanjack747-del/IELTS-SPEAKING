@@ -4,9 +4,9 @@ import {
   Clock, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, 
   Save, BookOpen, Loader2, ArrowLeft 
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { ReadingMode, ReadingPassage, ReadingQuestion, ReadingTestResult } from '../../types';
-import { cn, formatDuration } from '../../utils';
+import { cn, formatDuration, handleGeminiError } from '../../utils';
 import Markdown from 'react-markdown';
 
 interface ReadingTestRunnerProps {
@@ -69,10 +69,11 @@ export const ReadingTestRunner: React.FC<ReadingTestRunnerProps> = ({ mode, onCo
         `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: prompt,
           config: {
             responseMimeType: 'application/json',
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             responseSchema: {
               type: Type.OBJECT,
               properties: {
@@ -115,7 +116,9 @@ export const ReadingTestRunner: React.FC<ReadingTestRunnerProps> = ({ mode, onCo
         startTimeRef.current = Date.now();
       } catch (err) {
         console.error("Failed to generate test:", err);
-        setError("Failed to generate test. Please try again.");
+        if (!handleGeminiError(err)) {
+          setError("Failed to generate test. Please try again.");
+        }
         setStatus('error');
       }
     };
@@ -192,10 +195,11 @@ export const ReadingTestRunner: React.FC<ReadingTestRunnerProps> = ({ mode, onCo
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
-          responseMimeType: 'application/json'
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
         }
       });
 
@@ -215,14 +219,22 @@ export const ReadingTestRunner: React.FC<ReadingTestRunnerProps> = ({ mode, onCo
       onComplete(result);
     } catch (err) {
       console.error("Submission failed:", err);
-      setError("Failed to submit test. Please try again.");
+      if (!handleGeminiError(err)) {
+        setError("Failed to submit test. Please try again.");
+      }
       setStatus('error');
     }
   };
 
   if (status === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-6 bg-zinc-50">
+      <div className="flex flex-col items-center justify-center h-screen space-y-6 bg-zinc-50 relative">
+        <button 
+          onClick={onExit}
+          className="absolute top-6 left-6 p-2 hover:bg-zinc-100 rounded-full"
+        >
+          <ArrowLeft className="w-6 h-6 text-zinc-500" />
+        </button>
         <Loader2 className="w-16 h-16 text-emerald-500 animate-spin" />
         <div className="text-center space-y-2">
           <h3 className="text-2xl font-semibold text-zinc-900">Generating Test...</h3>

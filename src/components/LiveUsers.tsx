@@ -54,7 +54,15 @@ export const LiveUsers: React.FC = () => {
     };
   }, []);
 
-  if (!isConnected && userCount === 0) return null;
+  if (!isConnected && userCount === 0) {
+    // Show connecting state or 0 if enabled
+    return (
+      <div className="flex items-center space-x-2 bg-zinc-800/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-zinc-700/50 shadow-sm opacity-50">
+        <Users className="w-4 h-4 text-zinc-500" />
+        <span className="text-xs font-medium text-zinc-400">Connecting...</span>
+      </div>
+    );
+  }
 
   return (
     <motion.div 

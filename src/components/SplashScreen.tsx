@@ -34,6 +34,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <p className="text-zinc-500 font-medium tracking-wide uppercase text-sm">
             AI-Powered IELTS Coach
           </p>
+          <p className="text-zinc-400 text-xs mt-4 font-medium">
+            কোনো সমস্যা হলে পেজটি রিফ্রেশ করুন
+          </p>
         </div>
       </motion.div>
 

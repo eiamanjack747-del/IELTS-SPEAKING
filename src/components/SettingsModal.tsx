@@ -9,6 +9,8 @@ interface SettingsModalProps {
   setUserName: (name: string) => void;
   targetBand: number;
   setTargetBand: (band: number) => void;
+  showLiveUsers: boolean;
+  setShowLiveUsers: (show: boolean) => void;
   onClearHistory: () => void;
 }
 
@@ -19,6 +21,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   setUserName,
   targetBand,
   setTargetBand,
+  showLiveUsers,
+  setShowLiveUsers,
   onClearHistory,
 }) => {
   if (!isOpen) return null;
@@ -80,6 +84,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-xs text-zinc-400">
               Set your goal to track progress effectively.
             </p>
+          </div>
+
+          {/* Live Users Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-zinc-700">Show Live Users</label>
+              <p className="text-xs text-zinc-400">Display the number of active users.</p>
+            </div>
+            <button
+              onClick={() => setShowLiveUsers(!showLiveUsers)}
+              className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                showLiveUsers ? 'bg-emerald-500' : 'bg-zinc-200'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                  showLiveUsers ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Clear History */}
