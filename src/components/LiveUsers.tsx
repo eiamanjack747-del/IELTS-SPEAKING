@@ -3,8 +3,9 @@ import { Users } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const LiveUsers: React.FC = () => {
-  const [userCount, setUserCount] = useState<number>(0);
-  const [isConnected, setIsConnected] = useState(false);
+  // Initialize with a random count between 400 and 500 immediately
+  const [userCount, setUserCount] = useState<number>(() => 400 + Math.floor(Math.random() * 100));
+  const [isConnected, setIsConnected] = useState(true); // Always show as connected/active
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -13,18 +14,24 @@ export const LiveUsers: React.FC = () => {
 
     // Simulation function to generate realistic-looking user counts
     const startSimulation = () => {
-      // Base count between 120 and 150
-      const baseCount = 120 + Math.floor(Math.random() * 30);
-      setUserCount(baseCount);
-      setIsConnected(true);
-
+      // Ensure we start with a valid number if not already set
+      setUserCount(prev => prev || (400 + Math.floor(Math.random() * 100)));
+      
       simulationTimer = setInterval(() => {
         setUserCount(prev => {
-          const change = Math.floor(Math.random() * 5) - 2; // -2 to +2
-          return Math.max(100, prev + change);
+          // Fluctuate by -5 to +5
+          const change = Math.floor(Math.random() * 11) - 5;
+          // Keep within 350-600 range to look realistic but stay around 400-500
+          const newCount = prev + change;
+          if (newCount < 350) return 350 + Math.floor(Math.random() * 20);
+          if (newCount > 600) return 600 - Math.floor(Math.random() * 20);
+          return newCount;
         });
-      }, 5000);
+      }, 3000); // Update every 3 seconds
     };
+
+    // Start simulation immediately
+    startSimulation();
 
     const connect = () => {
       // Use wss:// if on https, otherwise ws://
@@ -36,15 +43,17 @@ export const LiveUsers: React.FC = () => {
 
         ws.onopen = () => {
           console.log('Connected to WebSocket');
-          setIsConnected(true);
-          // Clear simulation if real connection works
-          if (simulationTimer) clearInterval(simulationTimer);
+          // If real connection works, we might want to stop simulation
+          // But since we don't have a real backend broadcasting count yet, 
+          // we'll keep simulation running or just let real events overwrite it if they come.
         };
 
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
             if (data.type === 'USER_COUNT_UPDATE') {
+              // If we get real data, use it and stop simulation
+              if (simulationTimer) clearInterval(simulationTimer);
               setUserCount(data.count);
             }
           } catch (error) {
@@ -53,21 +62,15 @@ export const LiveUsers: React.FC = () => {
         };
 
         ws.onclose = () => {
-          console.log('Disconnected from WebSocket, switching to simulation');
-          // Fallback to simulation immediately on close/fail
-          if (!isConnected) startSimulation();
-          
-          // Try to reconnect after 10 seconds, but keep simulation running
+          // Just try to reconnect, simulation keeps running
           reconnectTimer = setTimeout(connect, 10000);
         };
 
         ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
           if (ws) ws.close();
         };
       } catch (e) {
-        console.log('WebSocket creation failed, using simulation');
-        startSimulation();
+        // Ignore errors, simulation is already running
       }
     };
 
@@ -80,16 +83,7 @@ export const LiveUsers: React.FC = () => {
     };
   }, []);
 
-  if (!isConnected && userCount === 0) {
-    // Show connecting state or 0 if enabled
-    return (
-      <div className="flex items-center space-x-2 bg-zinc-800/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-zinc-700/50 shadow-sm opacity-50">
-        <Users className="w-4 h-4 text-zinc-500" />
-        <span className="text-xs font-medium text-zinc-400">Connecting...</span>
-      </div>
-    );
-  }
-
+  // Always render the count
   return (
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
